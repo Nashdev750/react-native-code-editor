@@ -154,6 +154,7 @@ const CodeEditor = (props: PropsWithForwardRef): JSX.Element => {
     const highlighterRef = useRef<ScrollView>(null);
     const inputRef = useRef<TextInput>(null);
     const inputSelection = useRef<TextInputSelectionType>({ start: 0, end: 0 });
+    const [selection, setSelection] = useState<TextInputSelectionType>({ start: 0, end: 0 })
 
     // Only when line numbers are showing
     const lineNumbersPadding = showLineNumbers ? 1.75 * fontSize : undefined;
@@ -241,7 +242,37 @@ const CodeEditor = (props: PropsWithForwardRef): JSX.Element => {
 
     const handleSelectionChange = (e: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
         inputSelection.current = e.nativeEvent.selection;
+        setSelection(e.nativeEvent.selection)
     };
+
+  // expose this component to parent component
+  const handlePress = (char:any) => {
+    const brackets = ['(','{','[','"',"'"]
+    const closebrackets:any = {
+      '(':')',
+      '{':'}',
+      '[':']',
+      '"':'"',
+      "'":"'"
+    }
+    if(char=='Tab') char = '    '
+    const { start, end } = selection;
+    setValue((prevCode: string) => {
+      let offset = 0
+      if(brackets.includes(char)){
+        char += closebrackets[char]
+        offset = -1
+      } 
+      const newText = prevCode.slice(0, start) + char + prevCode.slice(end);
+      const newCursorPos = start + char.length;
+      setSelection({ start: newCursorPos + offset, end: newCursorPos + offset });
+      return newText;
+    });
+  };
+
+  useImperativeHandle(forwardedRef, () => ({
+    handlePress, // Expose handlePress to parent
+   }), [handlePress]);
 
     return (
         <View style={{ width, height, marginTop, marginBottom }} testID={testID}>
@@ -274,6 +305,7 @@ const CodeEditor = (props: PropsWithForwardRef): JSX.Element => {
                 onScroll={handleScroll}
                 onKeyPress={handleKeyPress}
                 onSelectionChange={handleSelectionChange}
+                selection = {selection}
                 autoCapitalize="none"
                 autoComplete="off"
                 autoCorrect={false}
